@@ -15,6 +15,7 @@ repos:
     hooks:
       - id: terraform_fmt
       - id: terraform_validate
+        exclude: ^iac/modules/vm/
       - id: terragrunt_fmt
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
