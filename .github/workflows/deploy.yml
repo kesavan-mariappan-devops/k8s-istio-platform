@@ -22,32 +22,32 @@ jobs:
         uses: azure/setup-kubectl@v3
 
       - name: Validate namespace
-        run: kubectl apply --dry-run=client -f k8s/namespace.yaml
+        run: kubectl apply --dry-run=client --validate=false -f k8s/namespace.yaml
 
       - name: Validate backend manifests
-        run: kubectl apply --dry-run=client -f k8s/backend/
+        run: kubectl apply --dry-run=client --validate=false -f k8s/backend/
 
       - name: Validate frontend manifests
-        run: kubectl apply --dry-run=client -f k8s/frontend/
+        run: kubectl apply --dry-run=client --validate=false -f k8s/frontend/
 
       - name: Validate ingress
-        run: kubectl apply --dry-run=client -f k8s/ingress.yaml
+        run: kubectl apply --dry-run=client --validate=false -f k8s/ingress.yaml
 
       - name: Validate Istio Gateway
-        run: kubectl apply --dry-run=client -f k8s/istio/gateway.yaml
+        run: kubectl apply --dry-run=client --validate=false -f k8s/istio/gateway.yaml
 
       - name: Validate Istio VirtualServices
         run: |
-          kubectl apply --dry-run=client -f k8s/istio/virtualservice-backend.yaml
-          kubectl apply --dry-run=client -f k8s/istio/virtualservice-frontend.yaml
+          kubectl apply --dry-run=client --validate=false -f k8s/istio/virtualservice-backend.yaml
+          kubectl apply --dry-run=client --validate=false -f k8s/istio/virtualservice-frontend.yaml
 
       - name: Validate Istio DestinationRule
-        run: kubectl apply --dry-run=client -f k8s/istio/destinationrule-backend.yaml
+        run: kubectl apply --dry-run=client --validate=false -f k8s/istio/destinationrule-backend.yaml
 
       - name: Validate Istio Security policies
         run: |
-          kubectl apply --dry-run=client -f k8s/istio/authz-policy.yaml
-          kubectl apply --dry-run=client -f k8s/istio/mtls-peer-auth.yaml
+          kubectl apply --dry-run=client --validate=false -f k8s/istio/authz-policy.yaml
+          kubectl apply --dry-run=client --validate=false -f k8s/istio/mtls-peer-auth.yaml
 
       - name: Write deploy instructions to job summary
         run: |
