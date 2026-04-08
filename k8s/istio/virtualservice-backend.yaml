@@ -1,0 +1,36 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: mesh-api-vs
+  namespace: backend
+spec:
+  hosts:
+    - "k8s-istio-platform.backend.local"
+    - "mesh-api.backend.svc.cluster.local"
+  gateways:
+    - istio-system/k8s-istio-platform-gateway
+    - mesh                              # applies to internal mesh traffic too
+  http:
+    - match:
+        - uri:
+            prefix: /api
+        - uri:
+            prefix: /health
+      timeout: 3s
+      retries:
+        attempts: 3
+        perTryTimeout: 1s
+        retryOn: 5xx,gateway-error,reset
+      route:
+        - destination:
+            host: mesh-api.backend.svc.cluster.local
+            subset: v1
+            port:
+              number: 5000
+          weight: 90
+        - destination:
+            host: mesh-api.backend.svc.cluster.local
+            subset: v2
+            port:
+              number: 5000
+          weight: 10
