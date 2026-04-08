@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Kesavan Mariappan (kesavan-mariappan-devops)
+# https://github.com/kesavan-mariappan-devops/k8s-istio-platform
+
 apiVersion: v1
 kind: Namespace
 metadata:

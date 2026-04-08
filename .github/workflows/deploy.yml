@@ -10,11 +10,10 @@ env:
   IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}
 
 jobs:
-  deploy-dev:
-    name: Deploy → dev
+  validate-manifests:
+    name: Validate K8s Manifests
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    environment: dev
 
     steps:
       - uses: actions/checkout@v4
@@ -22,70 +21,94 @@ jobs:
       - name: Set up kubectl
         uses: azure/setup-kubectl@v3
 
-      - name: Set up kubeconfig
+      - name: Install kubeconform
         run: |
-          mkdir -p ~/.kube
-          echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+          curl -sL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz \
+            | tar xz -C /usr/local/bin
 
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.7.0
-
-      - name: Set up Terragrunt
+      - name: Validate all manifests
         run: |
-          curl -sL https://github.com/gruntwork-io/terragrunt/releases/download/v0.55.0/terragrunt_linux_amd64 \
-            -o /usr/local/bin/terragrunt
-          chmod +x /usr/local/bin/terragrunt
+          kubeconform \
+            -kubernetes-version 1.29.0 \
+            -schema-location default \
+            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+            -ignore-missing-schemas \
+            -summary \
+            -verbose \
+            k8s/namespace.yaml \
+            k8s/ingress.yaml \
+            k8s/backend/ \
+            k8s/frontend/ \
+            k8s/istio/
 
-      - name: Terragrunt apply — dev
-        working-directory: ../iac/environments/dev
-        run: terragrunt apply -auto-approve
-        env:
-          TF_VAR_backend_image: ${{ env.IMAGE_PREFIX }}/k8s-istio-platform-backend:${{ github.sha }}
-          TF_VAR_frontend_image: ${{ env.IMAGE_PREFIX }}/k8s-istio-platform-frontend:${{ github.sha }}
-
-      - name: Wait for rollout — dev
+      - name: Write deploy instructions to job summary
         run: |
-          kubectl rollout status deployment/mesh-api -n k8s-istio-platform-dev --timeout=120s
-          kubectl rollout status deployment/mesh-ui -n k8s-istio-platform-dev --timeout=120s
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          ## ✅ Manifests validated — ready to deploy
+
+          ### Images built
+          | Service   | Image |
+          |-----------|-------|
+          | mesh-api  | `${{ env.IMAGE_PREFIX }}/k8s-istio-platform-backend:${{ github.sha }}` |
+          | mesh-ui   | `${{ env.IMAGE_PREFIX }}/k8s-istio-platform-frontend:${{ github.sha }}` |
+
+          ### Deploy to Minikube (local)
+          ```bash
+          # Start cluster and enable addons
+          minikube start
+          minikube addons enable ingress
+          istioctl install --set profile=demo -y
+          kubectl label namespace backend istio-injection=enabled --overwrite
+          kubectl label namespace frontend istio-injection=enabled --overwrite
+
+          # Pull images from GHCR into minikube
+          minikube image pull ${{ env.IMAGE_PREFIX }}/k8s-istio-platform-backend:${{ github.sha }}
+          minikube image pull ${{ env.IMAGE_PREFIX }}/k8s-istio-platform-frontend:${{ github.sha }}
+
+          # Apply manifests
+          kubectl apply -f k8s/namespace.yaml
+          kubectl apply -f k8s/backend/
+          kubectl apply -f k8s/frontend/
+          kubectl apply -f k8s/ingress.yaml
+          kubectl apply -f k8s/istio/
+
+          # Wait for rollout
+          kubectl rollout status deployment/mesh-api -n backend --timeout=120s
+          kubectl rollout status deployment/mesh-ui -n frontend --timeout=120s
+          ```
+
+          ### Add to /etc/hosts
+          ```
+          $(minikube ip)  k8s-istio-platform.backend.local
+          $(minikube ip)  k8s-istio-platform.frontend.local
+          ```
+          EOF
+
+  deploy-dev:
+    name: Deploy → dev (manual)
+    runs-on: ubuntu-latest
+    needs: validate-manifests
+    environment: dev
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Deploy instructions
+        run: |
+          echo "::notice::Cluster deploy is manual for this portfolio project."
+          echo "::notice::Run deploy.sh locally after pulling images from GHCR."
+          echo "::notice::Backend image:  ${{ env.IMAGE_PREFIX }}/k8s-istio-platform-backend:${{ github.sha }}"
+          echo "::notice::Frontend image: ${{ env.IMAGE_PREFIX }}/k8s-istio-platform-frontend:${{ github.sha }}"
 
   deploy-prod:
-    name: Deploy → prod
+    name: Deploy → prod (manual approval)
     runs-on: ubuntu-latest
     needs: deploy-dev
-    environment: prod           # requires manual approval in GitHub
+    environment: prod
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up kubectl
-        uses: azure/setup-kubectl@v3
-
-      - name: Set up kubeconfig
+      - name: Deploy instructions
         run: |
-          mkdir -p ~/.kube
-          echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
-
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.7.0
-
-      - name: Set up Terragrunt
-        run: |
-          curl -sL https://github.com/gruntwork-io/terragrunt/releases/download/v0.55.0/terragrunt_linux_amd64 \
-            -o /usr/local/bin/terragrunt
-          chmod +x /usr/local/bin/terragrunt
-
-      - name: Terragrunt apply — prod
-        working-directory: ../iac/environments/prod
-        run: terragrunt apply -auto-approve
-        env:
-          TF_VAR_backend_image: ${{ env.IMAGE_PREFIX }}/k8s-istio-platform-backend:${{ github.sha }}
-          TF_VAR_frontend_image: ${{ env.IMAGE_PREFIX }}/k8s-istio-platform-frontend:${{ github.sha }}
-
-      - name: Wait for rollout — prod
-        run: |
-          kubectl rollout status deployment/mesh-api -n k8s-istio-platform-prod --timeout=120s
-          kubectl rollout status deployment/mesh-ui -n k8s-istio-platform-prod --timeout=120s
+          echo "::notice::Production deploy approved."
+          echo "::notice::Backend image:  ${{ env.IMAGE_PREFIX }}/k8s-istio-platform-backend:${{ github.sha }}"
+          echo "::notice::Frontend image: ${{ env.IMAGE_PREFIX }}/k8s-istio-platform-frontend:${{ github.sha }}"

@@ -1,0 +1,16 @@
+# CODEOWNERS
+# Maintainer: Kesavan Mariappan
+# All files — auto-assign review to maintainer on every PR
+
+* @kesavan-mariappan
+
+# Kubernetes manifests
+k8s/                    @kesavan-mariappan
+iac/                    @kesavan-mariappan
+
+# CI/CD workflows
+.github/workflows/      @kesavan-mariappan
+
+# Application code
+backend/                @kesavan-mariappan
+frontend/               @kesavan-mariappan

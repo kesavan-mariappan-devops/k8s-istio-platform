@@ -1,12 +1,13 @@
 {
   "name": "k8s-istio-platform-backend",
   "version": "1.0.0",
+  "type": "module",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "lint": "eslint src/",
-    "test": "node --test src/**/*.test.js"
+    "test": "node --test src/index.test.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

@@ -1,16 +1,46 @@
-# React + Vite
+# mesh-ui — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite SPA that displays the health and metadata of the `mesh-api` backend. Served via Nginx inside a Docker container.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- React 18 + Vite
+- Nginx (production container)
+- ESLint with `eslint-plugin-react-hooks`
 
-## React Compiler
+## Development
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+npm install
+npm run dev       # http://localhost:5173
+```
 
-## Expanding the ESLint configuration
+## Build
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+npm run build     # outputs to dist/
+npm run preview   # preview production build locally
+```
+
+## Lint
+
+```bash
+npm run lint
+```
+
+## Docker
+
+```bash
+docker build -t k8s-istio-platform-frontend:latest .
+docker run -p 3000:80 k8s-istio-platform-frontend:latest
+```
+
+## Nginx proxy
+
+In production the Nginx config (`nginx.conf`) proxies `/api` and `/health` to the `mesh-api` backend service, so the frontend and backend share the same origin.
+
+## Environment
+
+| Variable | Default | Description |
+|---|---|---|
+| `NODE_ENV` | `production` | Set by Docker build |
