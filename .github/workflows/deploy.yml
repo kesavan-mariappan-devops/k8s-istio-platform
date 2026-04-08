@@ -39,7 +39,7 @@ jobs:
           chmod +x /usr/local/bin/terragrunt
 
       - name: Terragrunt apply — dev
-        working-directory: ../iac/environments/dev
+        working-directory: iac/environments/dev
         run: terragrunt apply -auto-approve
         env:
           TF_VAR_backend_image: ${{ env.IMAGE_PREFIX }}/k8s-istio-platform-backend:${{ github.sha }}
@@ -79,7 +79,7 @@ jobs:
           chmod +x /usr/local/bin/terragrunt
 
       - name: Terragrunt apply — prod
-        working-directory: ../iac/environments/prod
+        working-directory: iac/environments/prod
         run: terragrunt apply -auto-approve
         env:
           TF_VAR_backend_image: ${{ env.IMAGE_PREFIX }}/k8s-istio-platform-backend:${{ github.sha }}
