@@ -89,4 +89,3 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `.github/workflows/deploy.yml` — after build: manifest validation + deploy stages
 - `deploy.sh` — local Minikube deploy script
 - `.gitignore` — Node.js, Python, Terraform, Kubernetes, IDE, OS artefacts
-
