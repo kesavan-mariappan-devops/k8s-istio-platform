@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import './App.css';
 
 const POLL_INTERVAL = 15000;
@@ -19,29 +19,48 @@ export default function App() {
   const [status, setStatus] = useState('loading');
   const [lastChecked, setLastChecked] = useState(null);
 
-  const fetchHealth = useCallback(async () => {
-    setStatus('loading');
-    try {
-      const [healthRes, infoRes] = await Promise.all([
-        fetch('/health'),
-        fetch('/api/info'),
-      ]);
-      setHealth(await healthRes.json());
-      setInfo(await infoRes.json());
-      setStatus('ok');
-    } catch {
-      setStatus('error');
-      setHealth(null);
-      setInfo(null);
-    }
-    setLastChecked(new Date().toLocaleTimeString());
-  }, []);
-
   useEffect(() => {
+    let cancelled = false;
+
+    async function fetchHealth() {
+      setStatus('loading');
+      try {
+        const [healthRes, infoRes] = await Promise.all([
+          fetch('/health'),
+          fetch('/api/info'),
+        ]);
+        if (cancelled) return;
+        setHealth(await healthRes.json());
+        setInfo(await infoRes.json());
+        setStatus('ok');
+      } catch {
+        if (cancelled) return;
+        setStatus('error');
+        setHealth(null);
+        setInfo(null);
+      }
+      if (!cancelled) setLastChecked(new Date().toLocaleTimeString());
+    }
+
     fetchHealth();
     const interval = setInterval(fetchHealth, POLL_INTERVAL);
-    return () => clearInterval(interval);
-  }, [fetchHealth]);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
+
+  function handleRefresh() {
+    setStatus('loading');
+    fetch('/health')
+      .then(r => r.json())
+      .then(data => { setHealth(data); setStatus('ok'); setLastChecked(new Date().toLocaleTimeString()); })
+      .catch(() => { setStatus('error'); setHealth(null); });
+    fetch('/api/info')
+      .then(r => r.json())
+      .then(data => setInfo(data))
+      .catch(() => setInfo(null));
+  }
 
   return (
     <div className="container">
@@ -75,7 +94,7 @@ export default function App() {
         </section>
       )}
 
-      <button onClick={fetchHealth}>Refresh</button>
+      <button onClick={handleRefresh}>Refresh</button>
     </div>
   );
 }
