@@ -5,6 +5,46 @@ on:
     branches: [main]
 
 jobs:
+  pre-commit:
+    name: Pre-commit Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Terraform (for terraform_fmt/validate hooks)
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.7.5'
+
+      - name: Install Terragrunt (for terragrunt_fmt hook)
+        run: |
+          curl -sL https://github.com/gruntwork-io/terragrunt/releases/download/v0.67.16/terragrunt_linux_amd64 \
+            -o /usr/local/bin/terragrunt && chmod +x /usr/local/bin/terragrunt
+
+      - name: Install Hadolint (for hadolint-docker hook)
+        run: |
+          curl -sL https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64 \
+            -o /usr/local/bin/hadolint && chmod +x /usr/local/bin/hadolint
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install backend deps (for backend-lint hook)
+        run: npm ci
+        working-directory: backend
+
+      - name: Install frontend deps (for frontend-lint hook)
+        run: npm ci
+        working-directory: frontend
+
+      - name: Run pre-commit
+        uses: pre-commit/action@v3.0.1
+
   backend:
     name: Backend — Lint & Test
     runs-on: ubuntu-latest

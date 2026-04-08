@@ -1,0 +1,51 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-yaml
+        args: [--unsafe]
+      - id: check-json
+      - id: detect-private-key
+
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.96.1
+    hooks:
+      - id: terraform_fmt
+      - id: terraform_validate
+        exclude: ^iac/modules/vm/
+      - id: terragrunt_fmt
+
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.29.3
+    hooks:
+      - id: check-github-workflows
+
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint-docker
+        args: [--ignore, DL3008, --ignore, DL3018]
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+
+  - repo: local
+    hooks:
+      - id: backend-lint
+        name: Backend ESLint
+        language: node
+        entry: bash -c 'cd backend && npm run lint'
+        files: ^backend/src/.*\.js$
+        pass_filenames: false
+
+      - id: frontend-lint
+        name: Frontend ESLint
+        language: node
+        entry: bash -c 'cd frontend && npm run lint'
+        files: ^frontend/src/.*\.(js|jsx)$
+        pass_filenames: false
