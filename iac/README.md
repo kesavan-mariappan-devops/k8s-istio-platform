@@ -1,75 +1,93 @@
 # IaC — Terraform + Terragrunt
 
-Manages the full local infrastructure:
-- VM provisioning via Libvirt
-- Kubernetes deployments on minikube (dev + prod namespaces)
+Manages Kubernetes deployments for `mesh-api` and `mesh-ui` across `dev` and `prod` environments using a reusable Terraform module.
 
 ## Structure
+
 ```
 iac/
 ├── modules/
-│   ├── vm/           # Libvirt VM provisioning
-│   └── k8s-app/      # Reusable k8s module (deployment, service, ingress)
+│   ├── k8s-app/          # reusable module: namespace, deployments, services, ingress
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   └── outputs.tf
+│   └── vm/               # optional VM provisioning via Libvirt
 ├── environments/
-│   ├── terragrunt.hcl  # root config (provider, state)
-│   ├── dev/            # namespace: sample-app-dev, 1 replica
-│   └── prod/           # namespace: sample-app-prod, 2 replicas
-└── vm/               # VM provisioning config
+│   ├── terragrunt.hcl    # root config — kubernetes provider + local state
+│   ├── dev/
+│   │   └── terragrunt.hcl  # namespace: k8s-istio-platform-dev, 1 replica
+│   └── prod/
+│       └── terragrunt.hcl  # namespace: k8s-istio-platform-prod, 2 replicas
+└── vm/
+    └── terragrunt.hcl
 ```
 
 ## Prerequisites
+
 ```bash
-# Install terraform
+# Terraform
 brew install terraform   # or https://developer.hashicorp.com/terraform/install
 
-# Install terragrunt
+# Terragrunt
 brew install terragrunt  # or https://terragrunt.gruntwork.io/docs/getting-started/install/
 
-# minikube must be running
+# Minikube must be running with ingress enabled
 minikube start
 minikube addons enable ingress
 ```
 
-## Deploy VM (optional)
-```bash
-cd vm
-terragrunt apply
-```
-
 ## Deploy to dev
+
 ```bash
-cd environments/dev
+cd iac/environments/dev
 terragrunt apply
 ```
 
 Add to `/etc/hosts`:
 ```
-$(minikube ip)  dev.sample-app.local
+$(minikube ip)  dev.k8s-istio-platform.local
 ```
-Open: http://dev.sample-app.local
+
+Open: http://dev.k8s-istio-platform.local
 
 ## Deploy to prod
+
 ```bash
-cd environments/prod
+cd iac/environments/prod
 terragrunt apply
 ```
 
 Add to `/etc/hosts`:
 ```
-$(minikube ip)  sample-app.local
+$(minikube ip)  k8s-istio-platform.local
 ```
-Open: http://sample-app.local
+
+Open: http://k8s-istio-platform.local
 
 ## Deploy all environments at once
+
 ```bash
-cd environments
+cd iac/environments
 terragrunt run-all apply
 ```
 
 ## Useful commands
+
 ```bash
-terragrunt plan          # preview changes
-terragrunt apply         # apply changes
-terragrunt destroy       # tear down
-terragrunt run-all plan  # plan all envs
+terragrunt plan           # preview changes
+terragrunt apply          # apply changes
+terragrunt destroy        # tear down
+terragrunt run-all plan   # plan all environments
 ```
+
+## Module inputs
+
+| Variable | Description | dev default | prod default |
+|---|---|---|---|
+| `env` | Environment name | `dev` | `prod` |
+| `namespace` | Kubernetes namespace | `k8s-istio-platform-dev` | `k8s-istio-platform-prod` |
+| `host` | Ingress hostname | `dev.k8s-istio-platform.local` | `k8s-istio-platform.local` |
+| `backend_image` | mesh-api image | `k8s-istio-platform-backend:latest` | `k8s-istio-platform-backend:latest` |
+| `frontend_image` | mesh-ui image | `k8s-istio-platform-frontend:latest` | `k8s-istio-platform-frontend:latest` |
+| `backend_replicas` | mesh-api replica count | `1` | `2` |
+| `frontend_replicas` | mesh-ui replica count | `1` | `1` |

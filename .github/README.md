@@ -5,43 +5,70 @@
 | Workflow | Trigger | What it does |
 |---|---|---|
 | `ci.yml` | Pull Request → main | Lint + test backend; lint + build frontend |
-| `build.yml` | Push → main | Build & push Docker images to GHCR (tagged with git SHA + `latest`) |
-| `deploy.yml` | After build succeeds | Terragrunt apply → dev (auto), then prod (manual approval) |
+| `build.yml` | Push → main | Build & push Docker images to GHCR (git SHA + `latest` tags) |
+| `deploy.yml` | After build succeeds | Validate k8s manifests with kubeconform → deploy dev (auto) → prod (manual approval) |
 
 ## Pipeline Flow
 
 ```
-PR opened
-  └── ci.yml → lint + test + build check
+PR opened → main
+  └── ci.yml
+        ├── Backend:  lint (eslint) + test (node:test)
+        └── Frontend: lint (eslint) + build check (vite)
 
-PR merged to main
+PR merged → main
   └── build.yml → docker build + push to GHCR
         └── deploy.yml
-              ├── Terragrunt apply → dev   (automatic)
-              └── Terragrunt apply → prod  (requires manual approval)
+              ├── validate-manifests
+              │     kubeconform offline schema validation
+              │     18 resources (k8s + Istio CRDs) — no cluster needed
+              ├── deploy-dev   (environment: dev — automatic)
+              └── deploy-prod  (environment: prod — manual approval required)
 ```
-
-## Required Secrets
-
-| Secret | Description |
-|---|---|
-| `KUBECONFIG` | Base64-encoded kubeconfig: `cat ~/.kube/config \| base64` |
-
-`GITHUB_TOKEN` is provided automatically by GitHub — no setup needed.
 
 ## GitHub Environments
 
-Create two environments in **GitHub → Settings → Environments**:
+| Environment | Protection | Purpose |
+|---|---|---|
+| `dev` | None — auto deploy | Staging / integration |
+| `prod` | Required reviewer: `kesavan-mariappan` | Production gate |
 
-- `dev` — no protection rules (auto deploy)
-- `prod` — add **Required reviewers** to enforce a manual approval gate before production
+## Repository Variables & Secrets
+
+| Name | Type | Description |
+|---|---|---|
+| `IMAGE_PREFIX` | Variable | `ghcr.io/kesavan-mariappan-devops` |
+| `IMAGE_REGISTRY` | Secret | `ghcr.io` |
+| `KUBECONFIG` | Secret | Base64-encoded kubeconfig — set to enable live cluster deploys |
+
+To generate `KUBECONFIG`:
+```bash
+cat ~/.kube/config | base64 | tr -d '\n'
+```
+Paste into **GitHub → Settings → Secrets → Actions → KUBECONFIG**.
+
+`GITHUB_TOKEN` is provided automatically — no setup needed.
 
 ## Container Images
 
 Images are published to GitHub Container Registry (GHCR):
 ```
-ghcr.io/<your-username>/k8s-istio-platform-backend:<git-sha>
-ghcr.io/<your-username>/k8s-istio-platform-backend:latest
-ghcr.io/<your-username>/k8s-istio-platform-frontend:<git-sha>
-ghcr.io/<your-username>/k8s-istio-platform-frontend:latest
+ghcr.io/kesavan-mariappan-devops/k8s-istio-platform-backend:<git-sha>
+ghcr.io/kesavan-mariappan-devops/k8s-istio-platform-backend:latest
+ghcr.io/kesavan-mariappan-devops/k8s-istio-platform-frontend:<git-sha>
+ghcr.io/kesavan-mariappan-devops/k8s-istio-platform-frontend:latest
+```
+
+## Manifest Validation
+
+`deploy.yml` uses [kubeconform](https://github.com/yannh/kubeconform) to validate all k8s and Istio manifests offline:
+
+```bash
+kubeconform \
+  -kubernetes-version 1.29.0 \
+  -schema-location default \
+  -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+  -ignore-missing-schemas \
+  -summary \
+  k8s/
 ```

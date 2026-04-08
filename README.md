@@ -15,6 +15,7 @@ A full-stack microservices application built to demonstrate production-grade Dev
 | Service Mesh | Istio 1.21 |
 | CI/CD | GitHub Actions + GHCR |
 | IaC | Terraform + Terragrunt |
+| Manifest Validation | kubeconform |
 
 ---
 
@@ -24,14 +25,14 @@ A full-stack microservices application built to demonstrate production-grade Dev
 
 ### Key Features Demonstrated
 
-- **Canary deployment** — 90/10 traffic split between mesh-api v1 and v2 via Istio VirtualService + DestinationRule
+- **Canary deployment** — 90/10 traffic split between `mesh-api` v1 and v2 via Istio VirtualService + DestinationRule
 - **mTLS** — STRICT PeerAuthentication enforced across `backend` and `frontend` namespaces
-- **Authorisation policy** — deny-all default; only the `frontend` namespace can call backend on `GET /api*` and `/health*`
+- **Authorisation policy** — deny-all default; only the `frontend` namespace can call `mesh-api` on `GET /api*` and `/health*`
 - **Resilience** — circuit breaker (outlier detection), retries, and a 3s timeout on the VirtualService
 - **Fault injection** — dedicated manifest to simulate 50% latency + 20% HTTP 500s for resilience testing
 - **Health probes** — liveness and readiness probes on all deployments
 - **Resource limits** — CPU and memory requests/limits on every container
-- **CI/CD pipeline** — lint → test → build → push to GHCR → deploy to dev (auto) → prod (manual approval)
+- **CI/CD pipeline** — lint → test → build → push to GHCR → validate manifests → deploy dev (auto) → prod (manual approval)
 
 ---
 
@@ -39,20 +40,74 @@ A full-stack microservices application built to demonstrate production-grade Dev
 
 ```
 k8s-istio-platform/
-├── backend/                  # Express.js API (v1 + v2)
-├── frontend/                 # React + Vite SPA
+├── backend/                  # Express.js API (mesh-api v1 + v2)
+│   ├── src/
+│   │   ├── index.js          # v1 — app entry point + Express routes
+│   │   ├── index.v2.js       # v2 — canary version
+│   │   └── index.test.js     # unit tests (node:test)
+│   ├── Dockerfile
+│   └── Dockerfile.v2
+├── frontend/                 # React + Vite SPA (mesh-ui)
+│   └── src/App.jsx
 ├── k8s/
-│   ├── namespace.yaml
-│   ├── ingress.yaml
-│   ├── backend/              # Deployment (v1 & v2), Service
-│   ├── frontend/             # Deployment, Service
-│   └── istio/                # Gateway, VirtualServices, DestinationRule,
-│                             # AuthorizationPolicy, PeerAuthentication, FaultInjection
+│   ├── namespace.yaml        # backend + frontend namespaces
+│   ├── ingress.yaml          # NGINX Ingress for both services
+│   ├── backend/              # mesh-api Deployment (v1 & v2), Service
+│   ├── frontend/             # mesh-ui Deployment, Service
+│   └── istio/
+│       ├── gateway.yaml
+│       ├── virtualservice-backend.yaml   # canary 90/10 + retries + timeout
+│       ├── virtualservice-frontend.yaml
+│       ├── destinationrule-backend.yaml  # ROUND_ROBIN + circuit breaker
+│       ├── authz-policy.yaml             # deny-all + allow frontend→mesh-api
+│       ├── mtls-peer-auth.yaml           # STRICT mTLS both namespaces
+│       └── fault-injection.yaml          # resilience testing (revert after use)
+├── iac/
+│   ├── environments/
+│   │   ├── terragrunt.hcl    # root config (provider, state)
+│   │   ├── dev/              # namespace: k8s-istio-platform-dev, 1 replica
+│   │   └── prod/             # namespace: k8s-istio-platform-prod, 2 replicas
+│   └── modules/k8s-app/      # reusable Terraform module
+├── docs/
+│   └── architecture.png
 ├── .github/
-│   └── workflows/            # ci.yml, build.yml, deploy.yml
-├── deploy.sh                 # Local Minikube deploy script
-└── docker-compose.yml        # Local development
+│   └── workflows/
+│       ├── ci.yml            # PR: lint + test + build check
+│       ├── build.yml         # push to main: docker build + push GHCR
+│       └── deploy.yml        # after build: validate manifests + deploy stages
+├── deploy.sh                 # local Minikube deploy script
+└── docker-compose.yml        # local development
 ```
+
+---
+
+## CI/CD Pipeline
+
+```
+PR opened → main
+  └── ci.yml
+        ├── Backend:  lint + test (node:test)
+        └── Frontend: lint + build check
+
+PR merged → main
+  └── build.yml
+        └── Docker build + push to GHCR (git SHA + latest tags)
+              └── deploy.yml
+                    ├── validate-manifests: kubeconform offline schema validation
+                    │     (18 resources — k8s + Istio CRDs)
+                    ├── deploy-dev:  auto deploy (environment: dev)
+                    └── deploy-prod: manual approval gate (environment: prod)
+```
+
+### GitHub Environments & Secrets
+
+| Name | Type | Value |
+|---|---|---|
+| `IMAGE_PREFIX` | Variable | `ghcr.io/kesavan-mariappan-devops` |
+| `IMAGE_REGISTRY` | Secret | `ghcr.io` |
+| `KUBECONFIG` | Secret | Base64-encoded kubeconfig (set when deploying to a live cluster) |
+| `dev` | Environment | No protection rules — auto deploy |
+| `prod` | Environment | Required reviewer: manual approval gate |
 
 ---
 
@@ -62,7 +117,7 @@ k8s-istio-platform/
 |---|---|---|
 | GET | /health | Health check — uptime, env, timestamp, version |
 | GET | /api/info | App metadata — name, version, description |
-| GET | /api/slow | Slow endpoint (5s) — used to demonstrate Istio timeout |
+| GET | /api/slow | Slow endpoint (5s) — demonstrates Istio 3s timeout |
 
 ---
 
@@ -72,15 +127,12 @@ k8s-istio-platform/
 ```bash
 docker compose up --build
 ```
-Frontend: http://localhost:3000  
+Frontend: http://localhost:3000
 Backend: http://localhost:5000
 
 **Without Docker**
 ```bash
-# Backend
 cd backend && npm install && npm run dev
-
-# Frontend
 cd frontend && npm install && npm run dev
 ```
 
@@ -110,8 +162,8 @@ Add to `/etc/hosts`:
 
 | URL | Description |
 |---|---|
-| http://k8s-istio-platform.frontend.local | Frontend UI |
-| http://k8s-istio-platform.backend.local/api/info | Backend API |
+| http://k8s-istio-platform.frontend.local | mesh-ui (Frontend) |
+| http://k8s-istio-platform.backend.local/api/info | mesh-api info |
 | http://k8s-istio-platform.backend.local/health | Health check |
 
 **Useful commands**
@@ -124,14 +176,32 @@ istioctl proxy-status
 
 ---
 
+## IaC — Terraform + Terragrunt
+
+```bash
+cd iac/environments/dev
+terragrunt apply
+
+cd iac/environments/prod
+terragrunt apply
+```
+
+To enable CI/CD cluster deploys, set the `KUBECONFIG` secret:
+```bash
+cat ~/.kube/config | base64 | tr -d '\n'
+# paste output into GitHub → Settings → Secrets → Actions → KUBECONFIG
+```
+
+---
+
 ## Istio — Resilience Testing
 
-Apply fault injection to simulate failures:
+Apply fault injection (50% delay + 20% abort):
 ```bash
 kubectl apply -f k8s/istio/fault-injection.yaml
 ```
 
-Revert to normal routing:
+Revert to normal canary routing:
 ```bash
 kubectl apply -f k8s/istio/virtualservice-backend.yaml
 ```
