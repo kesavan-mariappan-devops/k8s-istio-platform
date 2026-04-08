@@ -66,10 +66,3 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `deploy.sh` — local Minikube deploy script
 - `.gitignore` — Node.js, Python, Terraform, Kubernetes, IDE, OS artefacts
 
-### Project Rename
-- Folder renamed from `sample-app` → `k8s-istio-platform`
-- Application names renamed: `backend` → `mesh-api`, `frontend` → `mesh-ui`
-- Namespace typo fixed: `frondend` → `frontend` across all manifests
-- All hostnames updated: `sample-app.*.local` → `k8s-istio-platform.*.local`
-- All image names updated: `sample-backend/frontend` → `k8s-istio-platform-backend/frontend`
-- All Kubernetes resource names, labels, and selectors updated consistently
