@@ -1,0 +1,22 @@
+services:
+  backend:
+    build: ./backend
+    container_name: k8s-istio-platform-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  frontend:
+    build: ./frontend
+    container_name: k8s-istio-platform-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy

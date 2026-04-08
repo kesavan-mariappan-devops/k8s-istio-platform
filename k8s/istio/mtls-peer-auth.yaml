@@ -1,0 +1,19 @@
+# Enforces mTLS for all services in backend namespace
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: backend-mtls
+  namespace: backend
+spec:
+  mtls:
+    mode: STRICT
+---
+# Enforces mTLS for all services in frondend namespace
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: frontend-mtls
+  namespace: frontend
+spec:
+  mtls:
+    mode: STRICT

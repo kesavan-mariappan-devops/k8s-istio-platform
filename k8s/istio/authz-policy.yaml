@@ -1,0 +1,24 @@
+# Deny all traffic to backend by default
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: mesh-api-deny-all
+  namespace: backend
+spec: {}
+---
+# Allow only frontend namespace to call mesh-api
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: mesh-api-allow-frontend
+  namespace: backend
+spec:
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            namespaces: ["frontend", "istio-system"]
+      to:
+        - operation:
+            methods: ["GET"]
+            paths: ["/api*", "/health*"]

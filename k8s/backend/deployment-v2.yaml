@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mesh-api-v2
+  namespace: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mesh-api
+      version: v2
+  template:
+    metadata:
+      labels:
+        app: mesh-api
+        version: v2
+    spec:
+      containers:
+        - name: mesh-api
+          image: k8s-istio-platform-backend:v2
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 5000
+          env:
+            - name: NODE_ENV
+              value: production
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi

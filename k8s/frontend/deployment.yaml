@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mesh-ui
+  namespace: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mesh-ui
+  template:
+    metadata:
+      labels:
+        app: mesh-ui
+    spec:
+      containers:
+        - name: mesh-ui
+          image: k8s-istio-platform-frontend:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 80
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
