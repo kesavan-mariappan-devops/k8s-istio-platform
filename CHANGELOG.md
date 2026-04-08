@@ -5,7 +5,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [Unreleased] — feature/istio-canary-setup
+## [Unreleased]
+
+---
+
+## [1.2.0] — 2025-07-14 — Pre-commit & Pipeline Quality Gates
+
+### Added
+- `.pre-commit-config.yaml` — pre-commit hook config covering:
+  - `trailing-whitespace`, `end-of-file-fixer`, `check-merge-conflict` — general hygiene
+  - `check-yaml` (unsafe mode) — validates all k8s/Istio YAML before commit
+  - `check-json` — validates JSON files
+  - `detect-private-key` — blocks accidental private key commits
+  - `terraform_fmt`, `terraform_validate`, `terragrunt_fmt` — IaC formatting and validation
+  - `check-github-workflows` — GitHub Actions workflow schema validation
+  - `hadolint-docker` — Dockerfile best practice linting
+  - `gitleaks` — secret scanning
+  - `backend-lint` (local) — ESLint on `backend/src/`
+  - `frontend-lint` (local) — ESLint on `frontend/src/`
+- `ci.yml` — `pre-commit` job added to enforce all hooks on every PR to `main`
+  - Installs Terraform, Terragrunt, Hadolint, and Node.js deps before running hooks
+  - Uses `pre-commit/action@v3.0.1` to run the shared `.pre-commit-config.yaml`
+
+---
+
+## [1.1.0] — 2025-07-14 — Istio Canary Setup
 
 ### Added
 - `iac/` folder with Terraform + Terragrunt modules for `dev` and `prod` environments
