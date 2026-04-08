@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Kesavan Mariappan (kesavan-mariappan-devops)
+# https://github.com/kesavan-mariappan-devops/k8s-istio-platform
+
 variable "env" {
   description = "Environment name (dev, prod)"
   type        = string

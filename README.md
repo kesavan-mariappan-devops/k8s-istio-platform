@@ -1,5 +1,10 @@
 # DevOps Portfolio — k8s-istio-platform
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![CI](https://github.com/kesavan-mariappan-devops/k8s-istio-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/kesavan-mariappan-devops/k8s-istio-platform/actions/workflows/ci.yml)
+[![Build](https://github.com/kesavan-mariappan-devops/k8s-istio-platform/actions/workflows/build.yml/badge.svg)](https://github.com/kesavan-mariappan-devops/k8s-istio-platform/actions/workflows/build.yml)
+[![Maintainer](https://img.shields.io/badge/maintainer-kesavan--mariappan-blue)](https://github.com/kesavan-mariappan)
+
 A full-stack microservices application built to demonstrate production-grade DevOps practices: containerisation, Kubernetes orchestration, Istio service mesh, and a CI/CD pipeline with GitHub Actions.
 
 ---

@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Kesavan Mariappan (kesavan-mariappan-devops)
+// https://github.com/kesavan-mariappan-devops/k8s-istio-platform
+
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from './index.js';
