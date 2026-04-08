@@ -19,26 +19,42 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check KUBECONFIG secret
+        id: kubeconfig-check
+        run: |
+          if [ -z "${{ secrets.KUBECONFIG }}" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "::warning::KUBECONFIG secret is not set — skipping deploy. Add a base64-encoded kubeconfig to enable deployments."
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Set up kubectl
+        if: steps.kubeconfig-check.outputs.skip == 'false'
         uses: azure/setup-kubectl@v3
 
       - name: Set up kubeconfig
+        if: steps.kubeconfig-check.outputs.skip == 'false'
         run: |
           mkdir -p ~/.kube
           echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
 
       - name: Set up Terraform
+        if: steps.kubeconfig-check.outputs.skip == 'false'
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.7.0
 
       - name: Set up Terragrunt
+        if: steps.kubeconfig-check.outputs.skip == 'false'
         run: |
           curl -sL https://github.com/gruntwork-io/terragrunt/releases/download/v0.55.0/terragrunt_linux_amd64 \
             -o /usr/local/bin/terragrunt
           chmod +x /usr/local/bin/terragrunt
 
       - name: Terragrunt apply — dev
+        if: steps.kubeconfig-check.outputs.skip == 'false'
         working-directory: iac/environments/dev
         run: terragrunt apply -auto-approve
         env:
@@ -46,6 +62,7 @@ jobs:
           TF_VAR_frontend_image: ${{ env.IMAGE_PREFIX }}/k8s-istio-platform-frontend:${{ github.sha }}
 
       - name: Wait for rollout — dev
+        if: steps.kubeconfig-check.outputs.skip == 'false'
         run: |
           kubectl rollout status deployment/mesh-api -n k8s-istio-platform-dev --timeout=120s
           kubectl rollout status deployment/mesh-ui -n k8s-istio-platform-dev --timeout=120s
@@ -59,26 +76,42 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check KUBECONFIG secret
+        id: kubeconfig-check
+        run: |
+          if [ -z "${{ secrets.KUBECONFIG }}" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "::warning::KUBECONFIG secret is not set — skipping deploy. Add a base64-encoded kubeconfig to enable deployments."
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Set up kubectl
+        if: steps.kubeconfig-check.outputs.skip == 'false'
         uses: azure/setup-kubectl@v3
 
       - name: Set up kubeconfig
+        if: steps.kubeconfig-check.outputs.skip == 'false'
         run: |
           mkdir -p ~/.kube
           echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
 
       - name: Set up Terraform
+        if: steps.kubeconfig-check.outputs.skip == 'false'
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.7.0
 
       - name: Set up Terragrunt
+        if: steps.kubeconfig-check.outputs.skip == 'false'
         run: |
           curl -sL https://github.com/gruntwork-io/terragrunt/releases/download/v0.55.0/terragrunt_linux_amd64 \
             -o /usr/local/bin/terragrunt
           chmod +x /usr/local/bin/terragrunt
 
       - name: Terragrunt apply — prod
+        if: steps.kubeconfig-check.outputs.skip == 'false'
         working-directory: iac/environments/prod
         run: terragrunt apply -auto-approve
         env:
@@ -86,6 +119,7 @@ jobs:
           TF_VAR_frontend_image: ${{ env.IMAGE_PREFIX }}/k8s-istio-platform-frontend:${{ github.sha }}
 
       - name: Wait for rollout — prod
+        if: steps.kubeconfig-check.outputs.skip == 'false'
         run: |
           kubectl rollout status deployment/mesh-api -n k8s-istio-platform-prod --timeout=120s
           kubectl rollout status deployment/mesh-ui -n k8s-istio-platform-prod --timeout=120s
