@@ -24,7 +24,7 @@ A full-stack microservices application built to demonstrate production-grade Dev
 
 ### Key Features Demonstrated
 
-- **Canary deployment** — 90/10 traffic split between backend v1 and v2 via Istio VirtualService + DestinationRule
+- **Canary deployment** — 90/10 traffic split between mesh-api v1 and v2 via Istio VirtualService + DestinationRule
 - **mTLS** — STRICT PeerAuthentication enforced across `backend` and `frontend` namespaces
 - **Authorisation policy** — deny-all default; only the `frontend` namespace can call backend on `GET /api*` and `/health*`
 - **Resilience** — circuit breaker (outlier detection), retries, and a 3s timeout on the VirtualService
