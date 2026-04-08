@@ -21,33 +21,25 @@ jobs:
       - name: Set up kubectl
         uses: azure/setup-kubectl@v3
 
-      - name: Validate namespace
-        run: kubectl apply --dry-run=client --validate=false -f k8s/namespace.yaml
-
-      - name: Validate backend manifests
-        run: kubectl apply --dry-run=client --validate=false -f k8s/backend/
-
-      - name: Validate frontend manifests
-        run: kubectl apply --dry-run=client --validate=false -f k8s/frontend/
-
-      - name: Validate ingress
-        run: kubectl apply --dry-run=client --validate=false -f k8s/ingress.yaml
-
-      - name: Validate Istio Gateway
-        run: kubectl apply --dry-run=client --validate=false -f k8s/istio/gateway.yaml
-
-      - name: Validate Istio VirtualServices
+      - name: Install kubeconform
         run: |
-          kubectl apply --dry-run=client --validate=false -f k8s/istio/virtualservice-backend.yaml
-          kubectl apply --dry-run=client --validate=false -f k8s/istio/virtualservice-frontend.yaml
+          curl -sL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz \
+            | tar xz -C /usr/local/bin
 
-      - name: Validate Istio DestinationRule
-        run: kubectl apply --dry-run=client --validate=false -f k8s/istio/destinationrule-backend.yaml
-
-      - name: Validate Istio Security policies
+      - name: Validate all manifests
         run: |
-          kubectl apply --dry-run=client --validate=false -f k8s/istio/authz-policy.yaml
-          kubectl apply --dry-run=client --validate=false -f k8s/istio/mtls-peer-auth.yaml
+          kubeconform \
+            -kubernetes-version 1.29.0 \
+            -schema-location default \
+            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+            -ignore-missing-schemas \
+            -summary \
+            -verbose \
+            k8s/namespace.yaml \
+            k8s/ingress.yaml \
+            k8s/backend/ \
+            k8s/frontend/ \
+            k8s/istio/
 
       - name: Write deploy instructions to job summary
         run: |
