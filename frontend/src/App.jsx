@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import './App.css';
 
 const POLL_INTERVAL = 15000;
@@ -19,7 +19,7 @@ export default function App() {
   const [status, setStatus] = useState('loading');
   const [lastChecked, setLastChecked] = useState(null);
 
-  const fetchHealth = async () => {
+  const fetchHealth = useCallback(async () => {
     setStatus('loading');
     try {
       const [healthRes, infoRes] = await Promise.all([
@@ -35,13 +35,13 @@ export default function App() {
       setInfo(null);
     }
     setLastChecked(new Date().toLocaleTimeString());
-  };
+  }, []);
 
   useEffect(() => {
     fetchHealth();
     const interval = setInterval(fetchHealth, POLL_INTERVAL);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchHealth]);
 
   return (
     <div className="container">
