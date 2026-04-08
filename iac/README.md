@@ -36,6 +36,8 @@ minikube start
 minikube addons enable ingress
 ```
 
+> Terraform formatting and validation are also enforced via pre-commit hooks (`terraform_fmt`, `terraform_validate`, `terragrunt_fmt`) on every `git commit` and PR.
+
 ## Deploy to dev
 
 ```bash

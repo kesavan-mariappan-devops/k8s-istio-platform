@@ -4,9 +4,9 @@ React + Vite SPA that displays the health and metadata of the `mesh-api` backend
 
 ## Stack
 
-- React 18 + Vite
+- React 19 + Vite
 - Nginx (production container)
-- ESLint with `eslint-plugin-react-hooks`
+- ESLint with `eslint-plugin-react-hooks` and `eslint-plugin-react-refresh`
 
 ## Development
 
@@ -27,6 +27,8 @@ npm run preview   # preview production build locally
 ```bash
 npm run lint
 ```
+
+ESLint is also enforced via pre-commit hook (`frontend-lint`) on every `git commit` and on every PR.
 
 ## Docker
 

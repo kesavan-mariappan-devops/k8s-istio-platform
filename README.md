@@ -21,6 +21,7 @@ A full-stack microservices application built to demonstrate production-grade Dev
 | CI/CD | GitHub Actions + GHCR |
 | IaC | Terraform + Terragrunt |
 | Manifest Validation | kubeconform |
+| Code Quality | pre-commit hooks |
 
 ---
 
@@ -37,7 +38,8 @@ A full-stack microservices application built to demonstrate production-grade Dev
 - **Fault injection** — dedicated manifest to simulate 50% latency + 20% HTTP 500s for resilience testing
 - **Health probes** — liveness and readiness probes on all deployments
 - **Resource limits** — CPU and memory requests/limits on every container
-- **CI/CD pipeline** — lint → test → build → push to GHCR → validate manifests → deploy dev (auto) → prod (manual approval)
+- **CI/CD pipeline** — pre-commit checks → lint → test → build → push to GHCR → validate manifests → deploy dev (auto) → prod (manual approval)
+- **Pre-commit hooks** — trailing whitespace, YAML/JSON validation, secret detection, Terraform fmt/validate, Hadolint, Gitleaks, ESLint (backend + frontend)
 
 ---
 
@@ -77,9 +79,10 @@ k8s-istio-platform/
 │   └── architecture.png
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml            # PR: lint + test + build check
+│       ├── ci.yml            # PR: pre-commit + lint + test + build check
 │       ├── build.yml         # push to main: docker build + push GHCR
 │       └── deploy.yml        # after build: validate manifests + deploy stages
+├── .pre-commit-config.yaml   # pre-commit hook definitions (local + CI)
 ├── deploy.sh                 # local Minikube deploy script
 └── docker-compose.yml        # local development
 ```
@@ -91,8 +94,9 @@ k8s-istio-platform/
 ```
 PR opened → main
   └── ci.yml
-        ├── Backend:  lint + test (node:test)
-        └── Frontend: lint + build check
+        ├── Pre-commit: YAML/JSON lint, secret scan, Terraform fmt, Hadolint, Gitleaks, ESLint
+        ├── Backend:    lint + test (node:test)
+        └── Frontend:   lint + build check
 
 PR merged → main
   └── build.yml
@@ -123,6 +127,36 @@ PR merged → main
 | GET | /health | Health check — uptime, env, timestamp, version |
 | GET | /api/info | App metadata — name, version, description |
 | GET | /api/slow | Slow endpoint (5s) — demonstrates Istio 3s timeout |
+
+---
+
+## Pre-commit Hooks
+
+Install and activate hooks locally:
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+Run against all files manually:
+```bash
+pre-commit run --all-files
+```
+
+Hooks run automatically on every `git commit` and on every PR via `ci.yml`.
+
+| Hook | What it checks |
+|---|---|
+| `check-yaml` | Malformed k8s/Istio YAML |
+| `check-json` | Malformed JSON files |
+| `detect-private-key` | Accidental private key commits |
+| `terraform_fmt/validate` | IaC formatting and validity |
+| `terragrunt_fmt` | Terragrunt HCL formatting |
+| `check-github-workflows` | Workflow YAML schema |
+| `hadolint-docker` | Dockerfile best practices |
+| `gitleaks` | Secret scanning |
+| `backend-lint` | ESLint on `backend/src/` |
+| `frontend-lint` | ESLint on `frontend/src/` |
 
 ---
 
